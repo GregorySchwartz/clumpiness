@@ -9,6 +9,7 @@ module Clumpiness where
 import Data.List
 import Data.Tree
 import Control.Applicative
+import Data.Ratio
 
 -- Cabal
 import Tree
@@ -60,7 +61,10 @@ generateClumpMap labelList tree = map correctedClump labelCompareList
     correctedClump (!p1, !p2)  = ( p1
                                  , p2
                                  , geomAvg [part p1 p2 p1, part p1 p2 p2] )
-    part p1 p2 p = (clump p1 p2 / numInner) / (numPLeaves p / numLeaves)
+    part p1 p2 p = if (numPLeaves p > 0)
+                    then (clump p1 p2 * (fromRational (1 % numInner)))
+                       * (fromRational (numLeaves % numPLeaves p))
+                    else 0
     clump p1 p2  = getClumpiness p1 p2 tree
     numPLeaves p = genericLength . filter (== p) . leaves $ tree
     numLeaves    = genericLength . leaves $ tree
