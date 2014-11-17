@@ -81,11 +81,10 @@ getClumpiness p1 p2 propertyMap n@(Node { subForest = xs })
 -- properties are. Found by counting the parents whose descendent leaves are of
 -- those properties. They are weighted by how far away those leaves are.
 generateClumpMap :: (Ord a, Ord b)
-                 => [b]
-                 -> PropertyMap a b
+                 => PropertyMap a b
                  -> Tree (SuperNode a)
                  -> ClumpList b
-generateClumpMap propertyList propertyMap tree =
+generateClumpMap propertyMap tree =
     map correctedClump propertyCompareList
   where
     propertyCompareList = (\ p1 p2 -> (p1, p2))
@@ -95,8 +94,8 @@ generateClumpMap propertyList propertyMap tree =
                                  , p2
                                  , geomAvg [part p1 p2 p1, part p1 p2 p2] )
     part p1 p2 p = if (numPLeaves p :: Int) > 0
-                    then (clump p1 p2 * fromRational (1 % numInner))
-                       * fromRational (numLeaves % numPLeaves p)
+                    then (clump p1 p2 * fromRational (1 % numInner'))
+                       * fromRational (numLeaves' % numPLeaves p)
                     else 0
     clump p1 p2  = getClumpiness p1 p2 propertyMap tree
     numPLeaves p = genericLength
@@ -104,5 +103,6 @@ generateClumpMap propertyList propertyMap tree =
                  . map myRootLabel
                  . leaves
                  $ tree
-    numLeaves    = genericLength . leaves $ tree
-    numInner     = genericLength . innerNodes $ tree
+    propertyList = nub . M.elems $ propertyMap
+    numLeaves'   = numLeaves tree
+    numInner'    = numInner tree
