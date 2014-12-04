@@ -6,7 +6,7 @@
 module Clumpiness.Types where
 
 -- Algebraic
-data Metric = Clumpiness | Diversity | Mesh deriving (Read, Show, Eq)
+data Metric = Clumpiness | Diversity Double | Mesh deriving (Read, Show, Eq)
 
 -- Advanced
 type ClumpList a = [(a, a, Double)]

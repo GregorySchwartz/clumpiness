@@ -12,7 +12,6 @@ import Data.Tree
 import Control.Applicative
 import Data.Ratio
 import qualified Data.Map as M
-import Data.Function (on)
 
 -- Cabal
 import FunTree.Tree
@@ -61,6 +60,22 @@ relevantMap p1 p2 propertyMap lm
     relevantProperties = M.mapKeys property lm
     property x         = fromJust . M.lookup x $ propertyMap
 
+-- | Only look at these properties, if they aren't both in the list
+-- (or if p1 == p2 and the length is 1), then ignore it, Map version
+relevantMapSame :: (Ord a, Ord b)
+                => b
+                -> [b]
+                -> PropertyMap a b
+                -> M.Map a Int
+                -> M.Map a Int
+relevantMapSame p1 pRest propertyMap lm
+    | M.member p1 relevantProperties
+   && any (\x -> M.member x relevantProperties) pRest = lm
+    | otherwise                                       = M.empty
+  where
+    relevantProperties = M.mapKeys property lm
+    property x         = fromJust . M.lookup x $ propertyMap
+
 -- | Get the clumpiness of a single node. Ignore the root node. Only count p1 ==
 -- p2 case when there are at least one set of neighboring leaves in order to
 -- account for the extreme cases (complete mixture, complete separation of
@@ -78,20 +93,17 @@ getNodeClumpiness p1 p2 propertyMap n
     = sum
     . map (weigh . fromIntegral)
     . M.elems
-    . relevantMap p1 p2 propertyMap
+    . getRelevant (p1 == p2)
     . M.map fst
---    . getSameSiblings (p1 == p2)  -- Ignore for now
     . M.mapKeys myRootLabel
     . leavesCommonHeight 0
     $ n
   where
-    getSameSiblings True  = M.fromList
-                          . concat
-                          . filter (\x -> length x > 1)
-                          . groupBy (\x y -> (snd . snd $ x) == (snd . snd $ y))
-                          . sortBy (compare `on` (snd . snd))
-                          . M.toAscList
-    getSameSiblings False = id
+    getRelevant True  = relevantMapSame
+                        p1
+                        (filter (/= p1) . getProperties $ propertyMap)
+                        propertyMap
+    getRelevant False = relevantMap p1 p2 propertyMap
 
 -- | Get the clumpiness metric (before sample size correction)
 getPropertyClumpiness :: (Ord a, Ord b)
@@ -149,15 +161,16 @@ getPropertyMesh p1 p2 propertyMap n@(Node { subForest = xs })
 -- | Get the diversity of a node by its relevant leaves (if p1 == p2, then
 -- set the other nodes to be Nothing to get the diversity of p1 vs the rest)
 getNodeDiversity :: (Ord a, Ord b)
-                 => b
+                 => Double
+                 -> b
                  -> b
                  -> PropertyMap a b
                  -> Tree (SuperNode a)
                  -> Double
-getNodeDiversity _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
+getNodeDiversity _ _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
     = 0
-getNodeDiversity p1 p2 propertyMap n
-    = diversity 1
+getNodeDiversity q p1 p2 propertyMap n
+    = diversity q
     . processProperties (p1 == p2)
     . map (property . myRootLabel)
     . M.keys
@@ -170,16 +183,17 @@ getNodeDiversity p1 p2 propertyMap n
 
 -- | Get the clumpiness metric (before sample size correction)
 getPropertyDiversity :: (Ord a, Ord b)
-                     => b
+                     => Double
+                     -> b
                      -> b
                      -> PropertyMap a b
                      -> Tree (SuperNode a)
                      -> Double
-getPropertyDiversity _ _ _ (Node { subForest = [] }) = 0
-getPropertyDiversity p1 p2 propertyMap n@(Node { subForest = xs })
-    = sum $ getNodeDiversity p1 p2 propertyMap n : rest
+getPropertyDiversity _ _ _ _ (Node { subForest = [] }) = 0
+getPropertyDiversity q p1 p2 propertyMap n@(Node { subForest = xs })
+    = sum $ getNodeDiversity q p1 p2 propertyMap n : rest
   where
-    rest = map (getPropertyDiversity p1 p2 propertyMap) xs
+    rest = map (getPropertyDiversity q p1 p2 propertyMap) xs
 
 -- | Get the heatmap for the clumping metric, how "clumped together" the
 -- properties are. Found by counting the parents whose descendent leaves are of
@@ -196,11 +210,17 @@ generateClumpMap metric propertyMap tree =
                       <$> propertyList
                       <*> propertyList
     getRelationship Clumpiness (!p1, !p2) =
-        (p1, p2, geomAvg [part p1 p2 p1, part p1 p2 p2])
+        if p1 == p2
+            then
+                ( p1, p2, 1 - ( (geomAvg [part p1 p2 p1, part p1 p2 p2])
+                              / (genericLength . nub $ propertyList) ) )
+            else
+                ( p1, p2, (geomAvg [part p1 p2 p1, part p1 p2 p2])
+                          / (genericLength . nub $ propertyList) )
     getRelationship Mesh (!p1, !p2) =
         (p1, p2, getPropertyMesh p1 p2 propertyMap tree)
-    getRelationship Diversity (!p1, !p2) =
-        (p1, p2, getPropertyDiversity p1 p2 propertyMap tree)
+    getRelationship (Diversity x) (!p1, !p2) =
+        (p1, p2, getPropertyDiversity x p1 p2 propertyMap tree)
     part p1 p2 p = if (numPLeaves p :: Int) > 0
                     then (clump p1 p2 * fromRational (1 % numInner'))
                        * fromRational (numLeaves' % numPLeaves p)
