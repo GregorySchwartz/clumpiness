@@ -14,8 +14,8 @@ import Data.Ratio
 import qualified Data.Map as M
 
 -- Cabal
-import FunTree.Tree
-import FunTree.Types
+import Math.FunTree.Tree
+import Math.FunTree.Types
 import Math.Diversity.Diversity (diversity)
 
 -- Local
@@ -209,31 +209,50 @@ generateClumpMap metric propertyMap tree =
     propertyCompareList = (\ !p1 !p2 -> (p1, p2))
                       <$> propertyList
                       <*> propertyList
-    getRelationship Clumpiness (!p1, !p2) =
-        if p1 == p2
-            then
-                ( p1, p2, 1 - ( (geomAvg [part False p1 p2 p1, part True p1 p2 p2])
-                              / 2 ) )
-            else
-                ( p1, p2, (geomAvg [part False p1 p2 p1, part False p1 p2 p2])
-                          / (genericLength . nub $ propertyList) )
+    getRelationship Clumpiness (!p1, !p2) = normalizedResult clump p1 p2
     getRelationship Mesh (!p1, !p2) =
         (p1, p2, getPropertyMesh p1 p2 propertyMap tree)
     getRelationship (Diversity x) (!p1, !p2) =
-        (p1, p2, getPropertyDiversity x p1 p2 propertyMap tree)
-    part True p1 p2 p = if (numPLeaves p :: Int) > 0
-                           then (clump p1 p2 * fromRational (1 % numInner'))
-                              * fromRational (numLeaves' % (numLeaves' - numPLeaves p))
-                        else 0
-    part False p1 p2 p = if (numPLeaves p :: Int) > 0
-                            then (clump p1 p2 * fromRational (1 % numInner'))
+        normalizedDiversityResult (getDiversity x) p1 p2
+    getRelationship (MeanDiversity x) (!p1, !p2) =
+        if p1 == p2
+            then
+                ( p1, p2, 1 - ( ( getPropertyDiversity x p1 p2 propertyMap tree
+                              / (fromIntegral numInner' * 2) ) ) )
+            else
+                ( p1, p2, (getPropertyDiversity x p1 p2 propertyMap tree)
+                        / (fromIntegral numInner' * 2) )
+    normalizedDiversityResult f p1 p2 =
+        if p1 == p2
+            then
+                ( p1, p2, 1 - ( (geomAvg [part False p1 p2 f p1, part True p1 p2 f p2])
+                              / (numProperties ^ 2) ) )
+            else
+                ( p1, p2, (geomAvg [part False p1 p2 f p1, part False p1 p2 f p2])
+                          / (numProperties ^ 2) )
+    normalizedResult f p1 p2 =
+        if p1 == p2
+            then
+                ( p1, p2, 1 - ( (geomAvg [part False p1 p2 f p1, part True p1 p2 f p2])
+                              / numProperties ) )
+            else
+                ( p1, p2, (geomAvg [part False p1 p2 f p1, part False p1 p2 f p2])
+                          / numProperties )
+    part True p1 p2 f p = if (numPLeaves p :: Int) > 0
+                            then (f p1 p2 * fromRational (1 % numInner'))
+                               * fromRational (numLeaves' % (numLeaves' - numPLeaves p))
+                            else 0
+    part False p1 p2 f p = if (numPLeaves p :: Int) > 0
+                            then (f p1 p2 * fromRational (1 % numInner'))
                                * fromRational (numLeaves' % numPLeaves p)
                             else 0
-    clump p1 p2  = getPropertyClumpiness p1 p2 propertyMap tree
+    clump p1 p2          = getPropertyClumpiness p1 p2 propertyMap tree
+    getDiversity x p1 p2 = getPropertyDiversity x p1 p2 propertyMap tree
     numPLeaves p = genericLength
                  . filter (== p)
                  . M.elems
                  $ propertyMap
     propertyList = getProperties propertyMap
+    numProperties = genericLength . nub $ propertyList
     numLeaves'   = numLeaves tree
-    numInner'    = numInner tree
+    numInner'    = numInner tree - 1 -- We don't count the root
