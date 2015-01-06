@@ -8,9 +8,11 @@ module Math.Clumpiness.Types where
 
 -- Algebraic
 data Metric = Clumpiness
+            | ClumpinessAllRelevant
+            | ClumpinessMult
             | Diversity Double
             | MeanDiversity Double
-            | Mesh deriving (Read, Show, Eq)
+            deriving (Read, Show, Eq)
 
 -- Advanced
 type ClumpList a = [(a, a, Double)]
