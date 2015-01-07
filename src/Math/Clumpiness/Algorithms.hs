@@ -326,5 +326,7 @@ generateClumpMap metric propertyMap tree =
                          $ propertyMap
     propertyList         = getProperties propertyMap
     numProperties        = genericLength . nub $ propertyList
-    numLeaves'           = numLeaves tree
+    numLeaves'           = if hasRootLeaf tree
+                            then numLeaves tree - 1
+                            else numLeaves tree
     numInner'            = numInner tree - 1 -- We don't count the root
