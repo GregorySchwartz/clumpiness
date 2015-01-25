@@ -140,13 +140,14 @@ relevantMap p1 p2 propertyMap lm
 -- Ignore nodes not in propertyMap
 relevantMapSame :: (Ord a, Ord b)
                 => b
+                -> [b]
                 -> PropertyMap a b
                 -> M.Map a Int
                 -> M.Map a Int
-relevantMapSame p1 propertyMap lm
+relevantMapSame p1 pRest propertyMap lm
     | Set.member p1 relevantProperties
-   && (not . Set.null . Set.filter (/= p1) $ relevantProperties) = lm
-    | otherwise                                                  = M.empty
+   && any (\x -> Set.member x relevantProperties) pRest = lm
+    | otherwise                                         = M.empty
   where
     relevantProperties   = Set.fromList
                          . F.toList
@@ -189,6 +190,7 @@ getNodeClumpiness metric p1 p2 propertyMap n
     getEvens _ _ = id
     getRelevant True  = relevantMapSame
                         p1
+                        (filter (/= p1) . getProperties $ propertyMap)
                         propertyMap
     getRelevant False = relevantMap p1 p2 propertyMap
 
