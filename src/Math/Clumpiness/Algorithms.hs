@@ -140,14 +140,13 @@ relevantMap p1 p2 propertyMap lm
 -- Ignore nodes not in propertyMap
 relevantMapSame :: (Ord a, Ord b)
                 => b
-                -> [b]
                 -> PropertyMap a b
                 -> M.Map a Int
                 -> M.Map a Int
-relevantMapSame p1 pRest propertyMap lm
+relevantMapSame p1 propertyMap lm
     | Set.member p1 relevantProperties
-   && any (\x -> Set.member x relevantProperties) pRest = lm
-    | otherwise                                         = M.empty
+   && (not . Set.null . Set.filter (/= p1) $ relevantProperties) = lm
+    | otherwise                                                  = M.empty
   where
     relevantProperties   = Set.fromList
                          . F.toList
@@ -190,7 +189,6 @@ getNodeClumpiness metric p1 p2 propertyMap n
     getEvens _ _ = id
     getRelevant True  = relevantMapSame
                         p1
-                        (filter (/= p1) . getProperties $ propertyMap)
                         propertyMap
     getRelevant False = relevantMap p1 p2 propertyMap
 
@@ -256,12 +254,15 @@ getPropertyDiversity q p1 p2 propertyMap n@(Node { subForest = xs })
 -- | Get the heatmap for the clumping metric, how "clumped together" the
 -- properties are. Found by counting the parents whose descendent leaves are of
 -- those properties. They are weighted by how far away those leaves are.
+-- Remove any unwanted properties by having the "viable" function take in
+-- a property and return if it is viable or not
 generateClumpMap :: (Ord a, Ord b)
                  => Metric
+                 -> (b -> Bool)
                  -> PropertyMap a b
                  -> Tree (SuperNode a)
                  -> ClumpList b
-generateClumpMap metric propertyMap tree =
+generateClumpMap metric viable propertyMap tree =
     map (getRelationship metric) propertyCompareList
   where
     propertyCompareList = (\ !p1 !p2 -> (p1, p2))
@@ -324,8 +325,9 @@ generateClumpMap metric propertyMap tree =
                          . filter (F.elem p)
                          . M.elems
                          $ propertyMap
-    propertyList         = getProperties propertyMap
-    numProperties        = genericLength . nub $ propertyList
+    propertyList         = filter viable . getProperties $ propertyMap
+    -- The number of properties being compared here
+    numProperties        = 2 --genericLength . nub $ propertyList
     numLeaves'           = if hasRootLeaf tree
                             then numLeaves tree - 1
                             else numLeaves tree
