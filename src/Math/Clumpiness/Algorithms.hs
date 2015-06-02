@@ -34,7 +34,8 @@ weigh :: Double -> Double
 weigh x = 1 / (2 ** x)
 
 -- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
--- list and selecting the closest p' (lower nodes have preference)
+-- list and selecting the closest p' (lower nodes have preference, so we
+-- get the two different properties as close together as we can)
 getEvenCount :: (Ord a, Eq b)
              => b
              -> b
@@ -303,7 +304,11 @@ generateClumpMap metric viable propertyMap tree =
             else
                 ( p1, p2, (geomAvg [multWeight False p1 p2 f p1, multWeight False p1 p2 f p2])
                           / numProperties )
+    -- If we have no leaves of that property than the value is 0 (0 if it's
+    -- the same as well). If all leaves are of a single property than the
+    -- value is also 0.
     divWeight True p1 p2 f p = if (numPLeaves p :: Int) > 0
+                               && numPLeaves p < numLeaves'
                                 then (f p1 p2 * fromRational (1 % numInner'))
                                    * fromRational (numLeaves' % (numLeaves' - numPLeaves p))
                                 else 0
@@ -316,9 +321,9 @@ generateClumpMap metric viable propertyMap tree =
                                     * (1 - fromRational ((numLeaves' - numPLeaves p) % numLeaves'))
                                  else 0
     multWeight False p1 p2 f p = if (numPLeaves p :: Int) > 0
-                                     then (f p1 p2 * fromRational (1 % numInner'))
-                                        * (1 - fromRational (numPLeaves p % numLeaves'))
-                                     else 0
+                                    then (f p1 p2 * fromRational (1 % numInner'))
+                                       * (1 - fromRational (numPLeaves p % numLeaves'))
+                                    else 0
     clump p1 p2          = getPropertyClumpiness metric p1 p2 propertyMap tree
     getDiversity x p1 p2 = getPropertyDiversity x p1 p2 propertyMap tree
     numPLeaves p         = genericLength
