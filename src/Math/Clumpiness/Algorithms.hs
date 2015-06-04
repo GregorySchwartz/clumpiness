@@ -326,9 +326,9 @@ generateClumpMap metric viable propertyMap tree =
                                     else 0
     clump p1 p2          = getPropertyClumpiness metric p1 p2 propertyMap tree
     getDiversity x p1 p2 = getPropertyDiversity x p1 p2 propertyMap tree
-    numPLeaves p         = genericLength
-                         . filter (F.elem p)
-                         . M.elems
+    numPLeaves p         = fromIntegral
+                         . M.size
+                         . M.filter (F.elem p)
                          $ propertyMap
     propertyList         = filter viable . getProperties $ propertyMap
     -- The number of properties being compared here
