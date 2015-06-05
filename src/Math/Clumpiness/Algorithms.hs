@@ -64,8 +64,10 @@ getEvenCount p1 p2 propertyMap ls = evenList
     removeSnd (!x, _, !y) = (x, y)
     otherP p              = if p == p1 then p2 else p1
     snd' (_, !x, _)       = x
-    -- We verified earlier that these are all in the map, so get fromJust
-    property x            = fromJust $ M.lookup x propertyMap
+    -- We verified earlier that these are all in the map, so should be
+    -- there
+    property x            = fromMaybe (error "Property not found: " ++ show x)
+                          $ M.lookup x propertyMap
 
 -- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
 -- list and selecting the closest p' (lower nodes have preference).
@@ -98,7 +100,9 @@ getEvenCountSame p1 propertyMap ls = evenList
     removeSnd (!x, _, !y) = (x, y)
     snd' (_, !x, _)       = x
     -- We verified earlier that these are all in the map, so get fromJust
-    property x            = fmap (== p1) . fromJust $ M.lookup x propertyMap
+    property x            = fmap (== p1)
+                          . fromMaybe (error "Property not found: " ++ show x)
+                          $ M.lookup x propertyMap
 
 -- | Only look at these properties, if they aren't both in the list
 -- (or if p1 == p2 and the length is 1), then ignore it
@@ -111,7 +115,8 @@ relevantList p1 p2 l
     relevantNodes = filter (\x -> fst x `elem` [p1, p2]) l
 
 -- | Only look at these properties, if they aren't both in the list
--- (or if p1 == p2 and the length is 1), then ignore it, Map version
+-- (or if p1 == p2 and the length is 1), then ignore it, Map version.
+-- Ignore nodes not in propertyMap
 relevantMap :: (Ord a, Ord b)
             => b
             -> b
@@ -129,7 +134,8 @@ relevantMap p1 p2 propertyMap lm
     relevantProperties   = Set.fromList
                          . F.toList
                          . F.foldl' (Seq.><) Seq.empty
-                         . map (fromJust . property)
+                         . filter isJust
+                         . map property
                          . M.keys
                          $ lm
     maybeToBool Nothing  = False
