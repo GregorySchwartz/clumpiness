@@ -64,10 +64,8 @@ getEvenCount p1 p2 propertyMap ls = evenList
     removeSnd (!x, _, !y) = (x, y)
     otherP p              = if p == p1 then p2 else p1
     snd' (_, !x, _)       = x
-    -- We verified earlier that these are all in the map, so should be
-    -- there
-    property x            = fromMaybe (error "Property not found: " ++ show x)
-                          $ M.lookup x propertyMap
+    -- Just get an empty sequence if it's not in the map
+    property x            = fromMaybe Seq.empty $ M.lookup x propertyMap
 
 -- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
 -- list and selecting the closest p' (lower nodes have preference).
@@ -99,9 +97,9 @@ getEvenCountSame p1 propertyMap ls = evenList
     pList p               = filter (F.elem p . property . fst) ls
     removeSnd (!x, _, !y) = (x, y)
     snd' (_, !x, _)       = x
-    -- We verified earlier that these are all in the map, so get fromJust
+    -- Just get an empty sequence if it's not in the map
     property x            = fmap (== p1)
-                          . fromMaybe (error "Property not found: " ++ show x)
+                          . fromMaybe Seq.empty
                           $ M.lookup x propertyMap
 
 -- | Only look at these properties, if they aren't both in the list
@@ -134,6 +132,7 @@ relevantMap p1 p2 propertyMap lm
     relevantProperties   = Set.fromList
                          . F.toList
                          . F.foldl' (Seq.><) Seq.empty
+                         . map fromJust
                          . filter isJust
                          . map property
                          . M.keys
