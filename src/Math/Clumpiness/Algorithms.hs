@@ -29,9 +29,11 @@ import Math.Clumpiness.Types
 geomAvg :: [Double] -> Double
 geomAvg xs = product xs ** (1 / genericLength xs)
 
--- | Weigh the nodes by distance from the root
+-- | Weigh the nodes by what weight they have (based on the product of the
+-- number of children their parents have, see leavesParentMult in tree-fun)
+-- and invert it
 weigh :: Double -> Double
-weigh x = 1 / (2 ** x)
+weigh x = 1 / x
 
 -- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
 -- list and selecting the closest p' (lower nodes have preference, so we
@@ -185,9 +187,8 @@ getNodeClumpiness metric p1 p2 propertyMap n
     . getEvens metric (p1 == p2) -- Optional depending on metric used
     . M.toAscList
     . getRelevant (p1 == p2)
-    . M.map fst
     . M.mapKeys myRootLabel
-    . leavesCommonHeight 0
+    . leavesParentMult 1
     $ n
   where
     getEvens ClumpinessAllRelevant True  = getEvenCountSame p1 propertyMap
@@ -230,7 +231,7 @@ getNodeDiversity q p1 p2 propertyMap n
     . filter isJust
     . map (property . myRootLabel)
     . M.keys
-    . leavesCommonHeight 0
+    . leavesParentMult 1
     $ n
   where
     processProperties True  = (\x -> if all isNothing x then [] else x)
