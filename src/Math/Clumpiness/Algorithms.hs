@@ -286,9 +286,10 @@ generateClumpMap metric viable propertyMap tree =
     propertyCompareList = (\ !p1 !p2 -> (p1, p2))
                       <$> propertyList
                       <*> propertyList
-    getRelationship Clumpiness (!p1, !p2) = divResult clump p1 p2
-    getRelationship ClumpinessMult (!p1, !p2) = multResult clump p1 p2
-    getRelationship (Diversity x) (!p1, !p2) =
+    getRelationship Clumpiness (!p1, !p2)        = divResult clump p1 p2
+    getRelationship ClumpinessEvens (!p1, !p2)   = divResult clump p1 p2
+    getRelationship ClumpinessMult (!p1, !p2)    = multResult clump p1 p2
+    getRelationship (Diversity x) (!p1, !p2)     =
         divDiversityResult (getDiversity x) p1 p2
     getRelationship (MeanDiversity x) (!p1, !p2) =
         if p1 == p2
