@@ -8,7 +8,7 @@ module Math.Clumpiness.Types where
 
 -- Algebraic
 data Metric = Clumpiness
-            | ClumpinessAllRelevant
+            | ClumpinessEvens
             | ClumpinessMult
             | Diversity Double
             | MeanDiversity Double

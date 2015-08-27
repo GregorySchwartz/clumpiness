@@ -44,8 +44,8 @@ getEvenCount :: (Ord a, Eq b)
              => b
              -> b
              -> PropertyMap a b
-             -> [(a, Double)]
-             -> [(a, Double)]
+             -> [(a, (Double, Double))]
+             -> [(a, (Double, Double))]
 getEvenCount _ _ _ []             = []
 getEvenCount p1 p2 propertyMap ls = evenList
   where
@@ -56,11 +56,12 @@ getEvenCount p1 p2 propertyMap ls = evenList
                ([], pList (otherP minP))
              . pList
              $ minP
-    closest (_, !h) = removeSnd
-                    . head
-                    . sortBy (compare `on` snd')
-                    . map (\(!x, !y) -> (x, (abs (h - y), h > y), y))
-                    . filter (F.elem (otherP minP) . property . fst)
+    closest (_, (_, !h)) = removeSnd
+                         . head
+                         . sortBy (compare `on` snd')
+                         . map ( \(!x, (!y, !z))
+                              -> (x, (abs (h - z), h >= z), (y, z)) )
+                         . filter (F.elem (otherP minP) . property . fst)
     minP = if (length . pList $ p1) > (length . pList $ p2)
             then p2
             else p1
@@ -75,13 +76,13 @@ getEvenCount p1 p2 propertyMap ls = evenList
 -- list and selecting the closest p' (lower nodes have preference).
 -- However, here we have the case where p1 == p2, so we want nodes with any
 -- other property. Here, True are cases with p1, False is any other
--- property. Assumes the snd in the list is the distance from the parent
+-- property. Assumes the snd of the snd in the list is the distance from the parent
 -- vertex
 getEvenCountSame :: (Ord a, Eq b)
                  => b
                  -> PropertyMap a b
-                 -> [(a, Double)]
-                 -> [(a, Double)]
+                 -> [(a, (Double, Double))]
+                 -> [(a, (Double, Double))]
 getEvenCountSame _ _ []            = []
 getEvenCountSame p1 propertyMap ls = evenList
   where
@@ -92,11 +93,12 @@ getEvenCountSame p1 propertyMap ls = evenList
                ([], pList (not minP))
              . pList
              $ minP
-    closest (_, !h) = removeSnd
-                    . head
-                    . sortBy (compare `on` snd')
-                    . map (\(!x, !y) -> (x, (abs (h - y), h > y), y))
-                    . filter (F.elem (not minP) . property . fst)
+    closest (_, (_, !h)) = removeSnd
+                         . head
+                         . sortBy (compare `on` snd')
+                         . map ( \(!x, (!y, !z))
+                              -> (x, (abs (h - z), h >= z), (y, z)) )
+                         . filter (F.elem (not minP) . property . fst)
     minP = if (length . pList $ True) > (length . pList $ False)
             then False
             else True
@@ -188,19 +190,20 @@ getNodeClumpiness _ _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
     = 0
 getNodeClumpiness metric p1 p2 propertyMap n
     = sum
-    . map (weigh . snd)
---    . getEvens metric (p1 == p2) -- Optional, does not work that well.
+    . map (weigh . fst . snd)
+    . getEvens metric (p1 == p2) -- Optional, does not work that well.
 --    Also relies on the snd of the ascList to be the distance from the
 --    parent vertex which we changed, so first change the Evens function
---    before adding this in again.
+--    before adding this in again. Right now it's a binary tree with two
+--    children always, so we can use this for now
     . M.toAscList
     . getRelevant (p1 == p2)
     . M.mapKeys myRootLabel
-    . leavesParentMult 1
+    . leavesParentMult 1 0
     $ n
   where
-    getEvens Clumpiness True  = getEvenCountSame p1 propertyMap
-    getEvens Clumpiness False = getEvenCount p1 p2 propertyMap
+    getEvens ClumpinessEvens True  = getEvenCountSame p1 propertyMap
+    getEvens ClumpinessEvens False = getEvenCount p1 p2 propertyMap
     getEvens _ _ = id
     getRelevant True  = relevantMapSame
                         p1
@@ -239,7 +242,7 @@ getNodeDiversity q p1 p2 propertyMap n
     . filter isJust
     . map (property . myRootLabel)
     . M.keys
-    . leavesParentMult 1
+    . leavesParentMult 1 0
     $ n
   where
     processProperties True  = (\x -> if all isNothing x then [] else x)
