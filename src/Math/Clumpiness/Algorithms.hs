@@ -343,12 +343,10 @@ generateClumpMap metric viable propertyMap tree =
     -- Number of leaves that meet a certain criteria
     numPLeavesF p        = numPLeaves (F.elem p)
     numNotPLeavesF p     = numPLeaves (not . Seq.null . Seq.filter (/= p))
-    numPLeaves f         = (\x -> x :: Integer)
-                         . genericLength
-                         . filter f
-                         . map (property . myRootLabel)
-                         . leaves
-                         $ tree
+    numPLeaves f         = fromIntegral
+                         . M.size
+                         . M.filter f
+                         $ propertyMap
     property x           = fromMaybe Seq.empty $ M.lookup x propertyMap
     propertyList         = filter viable . getProperties $ propertyMap
     -- The number of properties being compared here
