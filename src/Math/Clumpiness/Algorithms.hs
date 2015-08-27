@@ -38,7 +38,8 @@ weigh x = 1 / x
 
 -- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
 -- list and selecting the closest p' (lower nodes have preference, so we
--- get the two different properties as close together as we can)
+-- get the two different properties as close together as we can). Assumes
+-- the snd in the list is the distance from the parent vertex
 getEvenCount :: (Ord a, Eq b)
              => b
              -> b
@@ -73,7 +74,9 @@ getEvenCount p1 p2 propertyMap ls = evenList
 -- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
 -- list and selecting the closest p' (lower nodes have preference).
 -- However, here we have the case where p1 == p2, so we want nodes with any
--- other property. Here, True are cases with p1, False is any other property.
+-- other property. Here, True are cases with p1, False is any other
+-- property. Assumes the snd in the list is the distance from the parent
+-- vertex
 getEvenCountSame :: (Ord a, Eq b)
                  => b
                  -> PropertyMap a b
@@ -145,7 +148,8 @@ relevantMap p1 p2 propertyMap lm
     property x           = M.lookup x propertyMap
 
 -- | Only look at these properties, if they aren't both in the list
--- (or if p1 == p2 and the length is 1), then ignore it.
+-- (or if p1 == p2 and the length is 1 meaning that there is no other leaf
+-- of any other type), then ignore it.
 -- Ignore nodes not in propertyMap
 relevantMapSame :: (Ord a, Ord b)
                 => b
@@ -185,7 +189,10 @@ getNodeClumpiness _ _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
 getNodeClumpiness metric p1 p2 propertyMap n
     = sum
     . map (weigh . snd)
-    . getEvens metric (p1 == p2) -- Optional depending on metric used
+--    . getEvens metric (p1 == p2) -- Optional, does not work that well.
+--    Also relies on the snd of the ascList to be the distance from the
+--    parent vertex which we changed, so first change the Evens function
+--    before adding this in again.
     . M.toAscList
     . getRelevant (p1 == p2)
     . M.mapKeys myRootLabel
@@ -314,29 +321,35 @@ generateClumpMap metric viable propertyMap tree =
     -- If we have no leaves of that property than the value is 0 (0 if it's
     -- the same as well). If all leaves are of a single property than the
     -- value is also 0.
-    divWeight True p1 p2 f p = if (numPLeaves p :: Int) > 0
-                               && numPLeaves p < numLeaves'
+    divWeight True p1 p2 f p = if numNotPLeavesF p > 0
+                               && numNotPLeavesF p < numLeaves'
                                 then (f p1 p2 * fromRational (1 % numInner'))
-                                   * fromRational (numLeaves' % (numLeaves' - numPLeaves p))
+                                   * fromRational (numLeaves' % numNotPLeavesF p)
                                 else 0
-    divWeight False p1 p2 f p = if (numPLeaves p :: Int) > 0
+    divWeight False p1 p2 f p = if numPLeavesF p > 0
                                     then (f p1 p2 * fromRational (1 % numInner'))
-                                       * fromRational (numLeaves' % numPLeaves p)
+                                       * fromRational (numLeaves' % numPLeavesF p)
                                     else 0
-    multWeight True p1 p2 f p = if (numPLeaves p :: Int) > 0
+    multWeight True p1 p2 f p = if numPLeavesF p > 0
                                  then (f p1 p2 * fromRational (1 % numInner'))
-                                    * (1 - fromRational ((numLeaves' - numPLeaves p) % numLeaves'))
+                                    * (1 - fromRational (numNotPLeavesF p % numLeaves'))
                                  else 0
-    multWeight False p1 p2 f p = if (numPLeaves p :: Int) > 0
+    multWeight False p1 p2 f p = if numPLeavesF p > 0
                                     then (f p1 p2 * fromRational (1 % numInner'))
-                                       * (1 - fromRational (numPLeaves p % numLeaves'))
+                                       * (1 - fromRational (numPLeavesF p % numLeaves'))
                                     else 0
     clump p1 p2          = getPropertyClumpiness metric p1 p2 propertyMap tree
     getDiversity x p1 p2 = getPropertyDiversity x p1 p2 propertyMap tree
-    numPLeaves p         = fromIntegral
-                         . M.size
-                         . M.filter (F.elem p)
-                         $ propertyMap
+    -- Number of leaves that meet a certain criteria
+    numPLeavesF p        = numPLeaves (F.elem p)
+    numNotPLeavesF p     = numPLeaves (not . Seq.null . Seq.filter (/= p))
+    numPLeaves f         = (\x -> x :: Integer)
+                         . genericLength
+                         . filter f
+                         . map (property . myRootLabel)
+                         . leaves
+                         $ tree
+    property x           = fromMaybe Seq.empty $ M.lookup x propertyMap
     propertyList         = filter viable . getProperties $ propertyMap
     -- The number of properties being compared here
     numProperties        = 2 --genericLength . nub $ propertyList
