@@ -16,6 +16,7 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import Data.Function (on)
+import Debug.Trace
 
 -- Cabal
 import Math.FunTree.Tree
@@ -42,8 +43,8 @@ getEvenCount :: (Ord a, Eq b)
              => b
              -> b
              -> PropertyMap a b
-             -> [(a, Int)]
-             -> [(a, Int)]
+             -> [(a, Double)]
+             -> [(a, Double)]
 getEvenCount _ _ _ []             = []
 getEvenCount p1 p2 propertyMap ls = evenList
   where
@@ -76,8 +77,8 @@ getEvenCount p1 p2 propertyMap ls = evenList
 getEvenCountSame :: (Ord a, Eq b)
                  => b
                  -> PropertyMap a b
-                 -> [(a, Int)]
-                 -> [(a, Int)]
+                 -> [(a, Double)]
+                 -> [(a, Double)]
 getEvenCountSame _ _ []            = []
 getEvenCountSame p1 propertyMap ls = evenList
   where
@@ -121,8 +122,8 @@ relevantMap :: (Ord a, Ord b)
             => b
             -> b
             -> PropertyMap a b
-            -> M.Map a Int
-            -> M.Map a Int
+            -> M.Map a c
+            -> M.Map a c
 relevantMap p1 p2 propertyMap lm
     | Set.member p1 relevantProperties && Set.member p2 relevantProperties
    && (M.size relevantNodes > 1) = relevantNodes
@@ -149,8 +150,8 @@ relevantMap p1 p2 propertyMap lm
 relevantMapSame :: (Ord a, Ord b)
                 => b
                 -> PropertyMap a b
-                -> M.Map a Int
-                -> M.Map a Int
+                -> M.Map a c
+                -> M.Map a c
 relevantMapSame p1 propertyMap lm
     | Set.member p1 relevantProperties
    && (not . Set.null . Set.filter (/= p1) $ relevantProperties) = lm
@@ -183,7 +184,7 @@ getNodeClumpiness _ _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
     = 0
 getNodeClumpiness metric p1 p2 propertyMap n
     = sum
-    . map (weigh . fromIntegral . snd)
+    . map (weigh . snd)
     . getEvens metric (p1 == p2) -- Optional depending on metric used
     . M.toAscList
     . getRelevant (p1 == p2)
@@ -191,8 +192,8 @@ getNodeClumpiness metric p1 p2 propertyMap n
     . leavesParentMult 1
     $ n
   where
-    getEvens ClumpinessAllRelevant True  = getEvenCountSame p1 propertyMap
-    getEvens ClumpinessAllRelevant False = getEvenCount p1 p2 propertyMap
+    getEvens Clumpiness True  = getEvenCountSame p1 propertyMap
+    getEvens Clumpiness False = getEvenCount p1 p2 propertyMap
     getEvens _ _ = id
     getRelevant True  = relevantMapSame
                         p1
