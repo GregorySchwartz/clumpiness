@@ -273,7 +273,11 @@ getPropertyDiversity q p1 p2 propertyMap n@(Node { subForest = xs })
 -- properties are. Found by counting the parents whose descendent leaves are of
 -- those properties. They are weighted by how far away those leaves are.
 -- Remove any unwanted properties by having the "viable" function take in
--- a property and return if it is viable or not
+-- a property and return if it is viable or not. The PropertyMap should
+-- have all of the vertices within the tree but no more --- any additional
+-- and the clumpiness changes as the sample sizes change --- so this
+-- property has not been tested and so it may lead to new ways of viewing
+-- clumpiness.
 generateClumpMap :: (Ord a, Ord b)
                  => Metric
                  -> (b -> Bool)
