@@ -10,7 +10,7 @@ name:                clumpiness
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.15.0.1
+version:             0.15.0.3
 
 -- A short (one-line) description of the package.
 synopsis:            Calculate the clumpiness of leaf properties in a tree
@@ -48,7 +48,10 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Math.Clumpiness.Algorithms, Math.Clumpiness.Types
+  exposed-modules:     Math.Clumpiness.Algorithms
+                     , Math.Clumpiness.Types
+                     , Math.Clumpiness.Utilities
+                     , Math.Clumpiness.Pinpoint
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -57,7 +60,10 @@ library
   other-extensions:    BangPatterns
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && <4.8, containers >=0.5 && <0.6, tree-fun >=0.7 && <0.8, diversity >=0.7.0.1 && <0.8
+  build-depends:       base >=4.6 && <5
+                     , containers >=0.5
+                     , tree-fun >=0.7
+                     , diversity >=0.7.0.3
   
   -- Directories containing source files.
   hs-source-dirs:      src

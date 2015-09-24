@@ -1,4 +1,4 @@
--- clumpiness
+-- Algorithms
 -- By Gregory W. Schwartz
 
 {-# LANGUAGE BangPatterns #-}
@@ -16,11 +16,10 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import Data.Function (on)
-import Debug.Trace
 
 -- Cabal
-import Math.FunTree.Tree
-import Math.FunTree.Types
+import Math.TreeFun.Tree
+import Math.TreeFun.Types
 import Math.Diversity.Diversity (diversity)
 
 -- Local
