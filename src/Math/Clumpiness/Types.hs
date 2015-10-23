@@ -6,6 +6,9 @@
 
 module Math.Clumpiness.Types where
 
+-- Built-in
+import qualified Data.Sequence as Seq
+
 -- Algebraic
 data Metric = Clumpiness
             | ClumpinessEvens
@@ -13,6 +16,11 @@ data Metric = Clumpiness
             | Diversity Double
             | MeanDiversity Double
             deriving (Read, Show, Eq)
+
+data Pinpoint a b = Pinpoint { pinpointLabel      :: a
+                             , pinpointClumpiness :: Seq.Seq (b, b, Double)
+                             , pinpointLeaves     :: Seq.Seq a
+                             }
 
 -- Advanced
 type ClumpList a = [(a, a, Double)]

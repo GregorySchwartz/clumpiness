@@ -57,16 +57,21 @@ pinpointRecursion :: (Ord a, Ord b)
                   => (b -> Bool)
                   -> PropertyMap a b
                   -> Tree (SuperNode a)
-                  -> Seq.Seq (Seq.Seq (b, b, Double), Seq.Seq a)
+                  -> Seq.Seq (Pinpoint a b)
 pinpointRecursion _ _ (Node { subForest = [] }) = Seq.empty
-pinpointRecursion viable propertyMap tree@( Node { rootLabel = SuperNode { myLeaves = descendents }
+pinpointRecursion viable propertyMap tree@( Node { rootLabel = SuperNode { myRootLabel = label
+                                                                         , myLeaves = descendents }
                                                  , subForest = xs }
                                           ) =
-    (clump, relevantLeaves) Seq.<| ( mconcat
-                                   . map (pinpointRecursion viable validPropertyMap)
-                                   $ xs
-                                   )
+    newPinpoint Seq.<| ( mconcat
+                       . map (pinpointRecursion viable validPropertyMap)
+                       $ xs
+                       )
   where
+    newPinpoint    = Pinpoint { pinpointLabel = label
+                              , pinpointClumpiness = clump
+                              , pinpointLeaves = relevantLeaves
+                              }
     relevantLeaves = Seq.fromList
                    . filter (viableNode viable validPropertyMap)
                    . M.keys
@@ -85,11 +90,17 @@ pinpoint :: (Ord a, Ord b) => Double
                            -> (b -> Bool)
                            -> PropertyMap a b
                            -> Tree (SuperNode a)
-                           -> Seq.Seq (Seq.Seq (b, b, Double), Seq.Seq a)
+                           -> Seq.Seq (Pinpoint a b)
 pinpoint minClumpiness minLeaves viable propertyMap tree =
       Seq.filter
-      (\x -> (not . Seq.null . fst $ x) && (Seq.length . snd $ x) >= minLeaves)
-    . fmap (first filterClumpSeq)
+      ( \x -> (not . Seq.null . pinpointClumpiness $ x)
+           && (Seq.length . pinpointLeaves $ x) >= minLeaves
+      )
+    . fmap (\x -> x { pinpointClumpiness = filterClumpSeq
+                                         . pinpointClumpiness
+                                         $ x
+                    }
+           )
     $ pinpointList
   where
     pinpointList             = pinpointRecursion viable propertyMap tree

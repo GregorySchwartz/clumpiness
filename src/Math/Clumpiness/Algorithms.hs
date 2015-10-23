@@ -330,18 +330,26 @@ generateClumpMap metric viable propertyMap tree =
     -- value is also 0.
     divWeight True p1 p2 f p = if numNotPLeavesF p > 0
                                && numNotPLeavesF p < numLeaves'
+                               && numInner' > 0
+                               && numLeaves' > 0
                                 then (f p1 p2 * fromRational (1 % numInner'))
                                    * fromRational (numLeaves' % numNotPLeavesF p)
                                 else 0
     divWeight False p1 p2 f p = if numPLeavesF p > 0
+                                && numInner' > 0
+                                && numLeaves' > 0
                                     then (f p1 p2 * fromRational (1 % numInner'))
                                        * fromRational (numLeaves' % numPLeavesF p)
                                     else 0
     multWeight True p1 p2 f p = if numPLeavesF p > 0
+                                && numInner' > 0
+                                && numLeaves' > 0
                                  then (f p1 p2 * fromRational (1 % numInner'))
                                     * (1 - fromRational (numNotPLeavesF p % numLeaves'))
                                  else 0
     multWeight False p1 p2 f p = if numPLeavesF p > 0
+                                 && numInner' > 0
+                                 && numLeaves' > 0
                                     then (f p1 p2 * fromRational (1 % numInner'))
                                        * (1 - fromRational (numPLeavesF p % numLeaves'))
                                     else 0
