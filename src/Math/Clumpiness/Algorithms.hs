@@ -283,7 +283,7 @@ generateClumpMap :: (Ord a, Ord b)
                  -> PropertyMap a b
                  -> Tree (SuperNode a)
                  -> ClumpList b
-generateClumpMap metric viable propertyMap tree =
+generateClumpMap metric viable originalPropertyMap originalTree =
     map (getRelationship metric) propertyCompareList
   where
     propertyCompareList = (\ !p1 !p2 -> (p1, p2))
@@ -326,33 +326,33 @@ generateClumpMap metric viable propertyMap tree =
                 ( p1, p2, (geomAvg [multWeight False p1 p2 f p1, multWeight False p1 p2 f p2])
                           / numProperties )
     -- If we have no leaves of that property than the value is 0 (0 if it's
-    -- the same as well). If all leaves are of a single property than the
-    -- value is also 0.
-    divWeight True p1 p2 f p = if numNotPLeavesF p > 0
-                               && numNotPLeavesF p < numLeaves'
-                               && numInner' > 0
-                               && numLeaves' > 0
-                                then (f p1 p2 * fromRational (1 % numInner'))
-                                   * fromRational (numLeaves' % numNotPLeavesF p)
-                                else 0
-    divWeight False p1 p2 f p = if numPLeavesF p > 0
-                                && numInner' > 0
-                                && numLeaves' > 0
-                                    then (f p1 p2 * fromRational (1 % numInner'))
-                                       * fromRational (numLeaves' % numPLeavesF p)
-                                    else 0
-    multWeight True p1 p2 f p = if numPLeavesF p > 0
-                                && numInner' > 0
-                                && numLeaves' > 0
-                                 then (f p1 p2 * fromRational (1 % numInner'))
-                                    * (1 - fromRational (numNotPLeavesF p % numLeaves'))
+    -- the same and they are all the relevant property, 1 otherwise so it
+    -- becomes the opposite in the final calculation). If all leaves are of
+    -- a single property and p1 /= p2 than the value is also 0.
+    divWeight True p1 p2 f p = trivialCheck True p
+                             $ (f p1 p2 * fromRational (1 % numInner'))
+                             * fromRational (numLeaves' % numNotPLeavesF p)
+    divWeight False p1 p2 f p = trivialCheck False p
+                              $ (f p1 p2 * fromRational (1 % numInner'))
+                              * fromRational (numLeaves' % numPLeavesF p)
+    multWeight True p1 p2 f p = trivialCheck True p
+                              $ (f p1 p2 * fromRational (1 % numInner'))
+                              * (1 - fromRational (numNotPLeavesF p % numLeaves'))
+    multWeight False p1 p2 f p = trivialCheck False p
+                               $ (f p1 p2 * fromRational (1 % numInner'))
+                               * (1 - fromRational (numPLeavesF p % numLeaves'))
+    trivialCheck True p f  = if numNotPLeavesF p > 0
+                                 then if numNotPLeavesF p < numLeaves'
+                                      && numInner' > 0
+                                      && numLeaves' > 0
+                                          then f
+                                          else 1
                                  else 0
-    multWeight False p1 p2 f p = if numPLeavesF p > 0
-                                 && numInner' > 0
-                                 && numLeaves' > 0
-                                    then (f p1 p2 * fromRational (1 % numInner'))
-                                       * (1 - fromRational (numPLeavesF p % numLeaves'))
-                                    else 0
+    trivialCheck False p f = if numPLeavesF p > 0
+                             && numInner' > 0
+                             && numLeaves' > 0
+                                then f
+                                else 0
     clump p1 p2          = getPropertyClumpiness metric p1 p2 propertyMap tree
     getDiversity x p1 p2 = getPropertyDiversity x p1 p2 propertyMap tree
     -- Number of leaves that meet a certain criteria
@@ -366,7 +366,14 @@ generateClumpMap metric viable propertyMap tree =
     propertyList         = filter viable . getProperties $ propertyMap
     -- The number of properties being compared here
     numProperties        = 2 --genericLength . nub $ propertyList
-    numLeaves'           = if hasRootLeaf tree
-                            then numLeaves tree - 1
-                            else numLeaves tree
+    numLeaves'           = numLeaves tree
     numInner'            = numInner tree - 1 -- We don't count the root
+    -- Remove root leaves from the tree and propertyMap
+    propertyMap          = M.filterWithKey
+                           (\k _ -> not . Set.member k $ rootLeaves)
+                           originalPropertyMap
+    rootLeaves           = Set.fromList
+                         . map myRootLabel
+                         . getRootLeaves
+                         $ originalTree
+    tree                 = filterRootLeaves originalTree

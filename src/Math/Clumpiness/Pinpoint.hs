@@ -52,7 +52,8 @@ viableNode viable propertyMap x = (>= Just 0)
                                 . M.lookup x
                                 $ propertyMap
 
--- | Assign the clumpiness to each subtree and add them to a list.
+-- | Assign the clumpiness to each subtree and add them to a list. Ignore
+-- if the vertex is a root
 pinpointRecursion :: (Ord a, Ord b)
                   => (b -> Bool)
                   -> PropertyMap a b
@@ -60,18 +61,25 @@ pinpointRecursion :: (Ord a, Ord b)
                   -> Seq.Seq (Pinpoint a b)
 pinpointRecursion _ _ (Node { subForest = [] }) = Seq.empty
 pinpointRecursion viable propertyMap tree@( Node { rootLabel = SuperNode { myRootLabel = label
-                                                                         , myLeaves = descendents }
+                                                                         , myLeaves    = descendents
+                                                                         , myParent    = parent
+                                                                         }
                                                  , subForest = xs }
                                           ) =
-    newPinpoint Seq.<| ( mconcat
-                       . map (pinpointRecursion viable validPropertyMap)
-                       $ xs
-                       )
+    case newPinpoint of
+        Nothing  -> continue
+        (Just x) -> x Seq.<| continue
   where
-    newPinpoint    = Pinpoint { pinpointLabel = label
-                              , pinpointClumpiness = clump
-                              , pinpointLeaves = relevantLeaves
-                              }
+    continue       = mconcat
+                   . map (pinpointRecursion viable validPropertyMap)
+                   $ xs
+    newPinpoint    = case parent of
+                         SuperRoot -> Nothing
+                         _         -> Just
+                                      Pinpoint { pinpointLabel = label
+                                               , pinpointClumpiness = clump
+                                               , pinpointLeaves = relevantLeaves
+                                               }
     relevantLeaves = Seq.fromList
                    . filter (viableNode viable validPropertyMap)
                    . M.keys
