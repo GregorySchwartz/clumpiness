@@ -87,7 +87,7 @@ pinpointRecursion viable propertyMap tree@( Node { rootLabel = SuperNode { myRoo
     clump  = Seq.fromList
            $ generateClumpMap Clumpiness viable validPropertyMap newTree
     validPropertyMap = getValidPropertyMap newTree propertyMap
-    newTree          = rootSubtree tree
+    newTree          = filterRootLeaves . rootSubtree $ tree
 
 -- | Return the clumpiness vertices in the tree based on the minimum
 -- clumpiness and the minimum number of descendent leaves. Here, viable is
