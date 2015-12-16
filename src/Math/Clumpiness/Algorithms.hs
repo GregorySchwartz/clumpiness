@@ -328,7 +328,9 @@ generateClumpMap metric viable originalPropertyMap originalTree =
     -- If we have no leaves of that property than the value is 0 (0 if it's
     -- the same and they are all the relevant property, 1 otherwise so it
     -- becomes the opposite in the final calculation). If all leaves are of
-    -- a single property and p1 /= p2 than the value is also 0.
+    -- a single property and p1 /= p2 than the value is also 0. If there is
+    -- only 1 leaf and p1 == p2 then we want 0 (opposite) to maximize the
+    -- clumpiness.
     divWeight True p1 p2 f p = trivialCheck True p
                              $ (f p1 p2 * fromRational (1 % numInner'))
                              * fromRational (numLeaves' % numNotPLeavesF p)
@@ -341,7 +343,7 @@ generateClumpMap metric viable originalPropertyMap originalTree =
     multWeight False p1 p2 f p = trivialCheck False p
                                $ (f p1 p2 * fromRational (1 % numInner'))
                                * (1 - fromRational (numPLeavesF p % numLeaves'))
-    trivialCheck True p f  = if numNotPLeavesF p > 0
+    trivialCheck True p f  = if numNotPLeavesF p > 0 && numPLeavesF p > 1
                                  then if numNotPLeavesF p < numLeaves'
                                       && numInner' > 0
                                       && numLeaves' > 0
