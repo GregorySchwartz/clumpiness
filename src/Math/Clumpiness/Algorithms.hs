@@ -20,7 +20,6 @@ import Data.Function (on)
 -- Cabal
 import Math.TreeFun.Tree
 import Math.TreeFun.Types
-import Math.Diversity.Diversity (diversity)
 
 -- Local
 import Math.Clumpiness.Types
@@ -34,80 +33,6 @@ geomAvg xs = product xs ** (1 / genericLength xs)
 -- and invert it
 weigh :: Double -> Double
 weigh x = 1 / x
-
--- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
--- list and selecting the closest p' (lower nodes have preference, so we
--- get the two different properties as close together as we can). Assumes
--- the snd in the list is the distance from the parent vertex
-getEvenCount :: (Ord a, Eq b)
-             => b
-             -> b
-             -> PropertyMap a b
-             -> [(a, (Double, Double))]
-             -> [(a, (Double, Double))]
-getEvenCount _ _ _ []             = []
-getEvenCount p1 p2 propertyMap ls = evenList
-  where
-    evenList = fst
-             . foldl' (\ (!accList, !remainingList) !x
-                      -> ( closest x remainingList : accList
-                         , filter (/= closest x remainingList) remainingList ) )
-               ([], pList (otherP minP))
-             . pList
-             $ minP
-    closest (_, (_, !h)) = removeSnd
-                         . head
-                         . sortBy (compare `on` snd')
-                         . map ( \(!x, (!y, !z))
-                              -> (x, (abs (h - z), h >= z), (y, z)) )
-                         . filter (F.elem (otherP minP) . property . fst)
-    minP = if (length . pList $ p1) > (length . pList $ p2)
-            then p2
-            else p1
-    pList p               = filter (F.elem p . property . fst) ls
-    removeSnd (!x, _, !y) = (x, y)
-    otherP p              = if p == p1 then p2 else p1
-    snd' (_, !x, _)       = x
-    -- Just get an empty sequence if it's not in the map
-    property x            = fromMaybe Seq.empty $ M.lookup x propertyMap
-
--- | Get the same amount of p1 and p2 nodes, getting the minimum p in the
--- list and selecting the closest p' (lower nodes have preference).
--- However, here we have the case where p1 == p2, so we want nodes with any
--- other property. Here, True are cases with p1, False is any other
--- property. Assumes the snd of the snd in the list is the distance from the parent
--- vertex
-getEvenCountSame :: (Ord a, Eq b)
-                 => b
-                 -> PropertyMap a b
-                 -> [(a, (Double, Double))]
-                 -> [(a, (Double, Double))]
-getEvenCountSame _ _ []            = []
-getEvenCountSame p1 propertyMap ls = evenList
-  where
-    evenList = fst
-             . foldl' (\ (!accList, !remainingList) !x
-                      -> ( closest x remainingList : accList
-                         , filter (/= closest x remainingList) remainingList ) )
-               ([], pList (not minP))
-             . pList
-             $ minP
-    closest (_, (_, !h)) = removeSnd
-                         . head
-                         . sortBy (compare `on` snd')
-                         . map ( \(!x, (!y, !z))
-                              -> (x, (abs (h - z), h >= z), (y, z)) )
-                         . filter (F.elem (not minP) . property . fst)
-    minP = if (length . pList $ True) > (length . pList $ False)
-            then False
-            else True
-    pList p               = filter (F.elem p . property . fst) ls
-    removeSnd (!x, _, !y) = (x, y)
-    snd' (_, !x, _)       = x
-    -- Just get an empty sequence if it's not in the map
-    property x            = fmap (== p1)
-                          . fromMaybe Seq.empty
-                          $ M.lookup x propertyMap
 
 -- | Only look at these properties, if they aren't both in the list
 -- (or if p1 == p2 and the length is 1), then ignore it
@@ -179,31 +104,22 @@ relevantMapSame p1 propertyMap lm
 -- cases where the number of descendent leaves is 2. Ignore nodes not in
 -- propertyMap
 getNodeClumpiness :: (Ord a, Ord b)
-                  => Metric
-                  -> b
+                  => b
                   -> b
                   -> PropertyMap a b
                   -> Tree (SuperNode a)
                   -> Double
-getNodeClumpiness _ _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
+getNodeClumpiness _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
     = 0
-getNodeClumpiness metric p1 p2 propertyMap n
+getNodeClumpiness p1 p2 propertyMap n
     = sum
     . map (weigh . fst . snd)
-    . getEvens metric (p1 == p2) -- Optional, does not work that well.
---    Also relies on the snd of the ascList to be the distance from the
---    parent vertex which we changed, so first change the Evens function
---    before adding this in again. Right now it's a binary tree with two
---    children always, so we can use this for now
     . M.toAscList
     . getRelevant (p1 == p2)
     . M.mapKeys myRootLabel
     . leavesParentMult 1 0
     $ n
   where
-    getEvens ClumpinessEvens True  = getEvenCountSame p1 propertyMap
-    getEvens ClumpinessEvens False = getEvenCount p1 p2 propertyMap
-    getEvens _ _ = id
     getRelevant True  = relevantMapSame
                         p1
                         propertyMap
@@ -211,62 +127,16 @@ getNodeClumpiness metric p1 p2 propertyMap n
 
 -- | Get the clumpiness metric (before sample size correction)
 getPropertyClumpiness :: (Ord a, Ord b)
-                      => Metric
-                      -> b
+                      => b
                       -> b
                       -> PropertyMap a b
                       -> Tree (SuperNode a)
                       -> Double
-getPropertyClumpiness _ _ _ _ (Node { subForest = [] }) = 0
-getPropertyClumpiness metric p1 p2 propertyMap n@(Node { subForest = xs })
-    = sum $ getNodeClumpiness metric p1 p2 propertyMap n : rest
+getPropertyClumpiness _ _ _ (Node { subForest = [] }) = 0
+getPropertyClumpiness p1 p2 propertyMap n@(Node { subForest = xs })
+    = sum $ getNodeClumpiness p1 p2 propertyMap n : rest
   where
-    rest = map (getPropertyClumpiness metric p1 p2 propertyMap) xs
-
--- | Get the diversity of a node by its relevant leaves (if p1 == p2, then
--- set the other nodes to be Nothing to get the diversity of p1 vs the rest)
-getNodeDiversity :: (Ord a, Ord b)
-                 => Double
-                 -> b
-                 -> b
-                 -> PropertyMap a b
-                 -> Tree (SuperNode a)
-                 -> Double
-getNodeDiversity _ _ _ _ (Node {rootLabel = SuperNode {myParent = SuperRoot}})
-    = 0
-getNodeDiversity q p1 p2 propertyMap n
-    = diversity q
-    . processProperties (p1 == p2)
-    . map fromJust
-    . filter isJust
-    . map (property . myRootLabel)
-    . M.keys
-    . leavesParentMult 1 0
-    $ n
-  where
-    processProperties True  = (\x -> if all isNothing x then [] else x)
-                            . map (\x -> if x == p1 then Just p1 else Nothing)
-                            . F.toList
-                            . F.foldl' (Seq.><) Seq.empty
-    processProperties False = map Just
-                            . F.toList
-                            . F.foldl' (Seq.><) Seq.empty
-                            . map (Seq.filter (`elem` [p1, p2]))
-    property x = M.lookup x propertyMap
-
--- | Get the clumpiness metric (before sample size correction)
-getPropertyDiversity :: (Ord a, Ord b)
-                     => Double
-                     -> b
-                     -> b
-                     -> PropertyMap a b
-                     -> Tree (SuperNode a)
-                     -> Double
-getPropertyDiversity _ _ _ _ (Node { subForest = [] }) = 0
-getPropertyDiversity q p1 p2 propertyMap n@(Node { subForest = xs })
-    = sum $ getNodeDiversity q p1 p2 propertyMap n : rest
-  where
-    rest = map (getPropertyDiversity q p1 p2 propertyMap) xs
+    rest = map (getPropertyClumpiness p1 p2 propertyMap) xs
 
 -- | Get the heatmap for the clumping metric, how "clumped together" the
 -- properties are. Found by counting the parents whose descendent leaves are of
@@ -278,38 +148,18 @@ getPropertyDiversity q p1 p2 propertyMap n@(Node { subForest = xs })
 -- property has not been tested and so it may lead to new ways of viewing
 -- clumpiness.
 generateClumpMap :: (Ord a, Ord b)
-                 => Metric
-                 -> (b -> Bool)
+                 => (b -> Bool)
                  -> PropertyMap a b
                  -> Tree (SuperNode a)
                  -> ClumpList b
-generateClumpMap metric viable originalPropertyMap originalTree =
-    map (getRelationship metric) propertyCompareList
+generateClumpMap viable originalPropertyMap originalTree =
+    map getRelationship propertyCompareList
   where
     propertyCompareList = (\ !p1 !p2 -> (p1, p2))
                       <$> propertyList
                       <*> propertyList
-    getRelationship Clumpiness (!p1, !p2)        = divResult clump p1 p2
-    getRelationship ClumpinessEvens (!p1, !p2)   = divResult clump p1 p2
-    getRelationship ClumpinessMult (!p1, !p2)    = multResult clump p1 p2
-    getRelationship (Diversity x) (!p1, !p2)     =
-        divDiversityResult (getDiversity x) p1 p2
-    getRelationship (MeanDiversity x) (!p1, !p2) =
-        if p1 == p2
-            then
-                ( p1, p2, 1 - ( ( getPropertyDiversity x p1 p2 propertyMap tree
-                              / (fromIntegral numInner' * 2) ) ) )
-            else
-                ( p1, p2, (getPropertyDiversity x p1 p2 propertyMap tree)
-                        / (fromIntegral numInner' * 2) )
-    divDiversityResult f p1 p2 =
-        if p1 == p2
-            then
-                ( p1, p2, 1 - ( (geomAvg [divWeight False p1 p2 f p1, divWeight True p1 p2 f p2])
-                              / (numProperties ^ 2) ) )
-            else
-                ( p1, p2, (geomAvg [divWeight False p1 p2 f p1, divWeight False p1 p2 f p2])
-                          / (numProperties ^ 2) )
+    getRelationship (!p1, !p2) = divResult clump p1 p2
+    getRelationship _          = error "Unsupported metric"
     divResult f p1 p2 =
         if p1 == p2
             then
@@ -317,13 +167,6 @@ generateClumpMap metric viable originalPropertyMap originalTree =
                               / numProperties ) )
             else
                 ( p1, p2, (geomAvg [divWeight False p1 p2 f p1, divWeight False p1 p2 f p2])
-                          / numProperties )
-    multResult f p1 p2 =
-        if p1 == p2
-            then
-                ( p1, p2, 1 - (geomAvg [multWeight False p1 p2 f p1, multWeight True p1 p2 f p2]) )
-            else
-                ( p1, p2, (geomAvg [multWeight False p1 p2 f p1, multWeight False p1 p2 f p2])
                           / numProperties )
     -- If we have no leaves of that property than the value is 0 (0 if it's
     -- the same and they are all the relevant property, 1 otherwise so it
@@ -337,12 +180,6 @@ generateClumpMap metric viable originalPropertyMap originalTree =
     divWeight False p1 p2 f p = trivialCheck False p
                               $ (f p1 p2 * fromRational (1 % numInner'))
                               * fromRational (numLeaves' % numPLeavesF p)
-    multWeight True p1 p2 f p = trivialCheck True p
-                              $ (f p1 p2 * fromRational (1 % numInner'))
-                              * (1 - fromRational (numNotPLeavesF p % numLeaves'))
-    multWeight False p1 p2 f p = trivialCheck False p
-                               $ (f p1 p2 * fromRational (1 % numInner'))
-                               * (1 - fromRational (numPLeavesF p % numLeaves'))
     trivialCheck True p f  = if numNotPLeavesF p > 0 && numPLeavesF p > 1
                                  then if numNotPLeavesF p < numLeaves'
                                       && numInner' > 0
@@ -355,8 +192,7 @@ generateClumpMap metric viable originalPropertyMap originalTree =
                              && numLeaves' > 0
                                 then f
                                 else 0
-    clump p1 p2          = getPropertyClumpiness metric p1 p2 propertyMap tree
-    getDiversity x p1 p2 = getPropertyDiversity x p1 p2 propertyMap tree
+    clump p1 p2          = getPropertyClumpiness p1 p2 propertyMap tree
     -- Number of leaves that meet a certain criteria
     numPLeavesF p        = numPLeaves (F.elem p)
     numNotPLeavesF p     = numPLeaves (not . Seq.null . Seq.filter (/= p))

@@ -10,7 +10,7 @@ name:                clumpiness
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.16.0.3
+version:             0.17.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            Calculate the clumpiness of leaf properties in a tree
@@ -19,7 +19,7 @@ synopsis:            Calculate the clumpiness of leaf properties in a tree
 -- description:         
 
 -- The license under which the package is released.
-license:             GPL-2
+license:             GPL-3
 
 -- The file containing the license text.
 license-file:        LICENSE
@@ -63,7 +63,6 @@ library
   build-depends:       base >=4.6 && <5
                      , containers >=0.5
                      , tree-fun >=0.7
-                     , diversity >=0.7.0.3
   
   -- Directories containing source files.
   hs-source-dirs:      src
