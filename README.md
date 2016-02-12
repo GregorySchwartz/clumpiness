@@ -10,6 +10,10 @@ Library for measuring clumpiness of a hierarchical container such as a tree or d
 
 [Using a novel clumpiness measure to unite data with metadata: finding common sequence patterns in immune receptor germline V genes](http://www.sciencedirect.com/science/article/pii/S0167865516000234)
 
+## Installation
+
+`stack install clumpines --resolver nightly`
+
 ## Usage
 
 For example usage, please see https://github.com/GregorySchwartz/find-clumpiness
