@@ -12,7 +12,7 @@ Library for measuring clumpiness of a hierarchical container such as a tree or d
 
 ## Installation
 
-`stack install clumpines`
+`stack install clumpiness`
 
 ## Usage
 
