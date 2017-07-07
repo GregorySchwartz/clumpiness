@@ -29,7 +29,7 @@ author:              Gregory Schwartz
 
 -- An email address to which users can send suggestions, bug reports, and 
 -- patches.
-maintainer:          gs394@drexel.edu
+maintainer:          gsch@mail.med.upenn.edu
 
 -- A copyright notice.
 -- copyright:           
@@ -52,7 +52,7 @@ library
                      , Math.Clumpiness.Types
                      , Math.Clumpiness.Utilities
                      , Math.Clumpiness.Pinpoint
-  
+
   -- Modules included in this library but not exported.
   -- other-modules:       
   

@@ -76,16 +76,16 @@ pinpointRecursion viable propertyMap tree@( Node { rootLabel = SuperNode { myRoo
     newPinpoint    = case parent of
                          SuperRoot -> Nothing
                          _         -> Just
-                                      Pinpoint { pinpointLabel = label
+                                      Pinpoint { pinpointLabel      = label
                                                , pinpointClumpiness = clump
                                                , pinpointLeaves = relevantLeaves
                                                }
-    relevantLeaves = Seq.fromList
-                   . filter (viableNode viable validPropertyMap)
-                   . M.keys
-                   $ descendents
-    clump  = Seq.fromList
-           $ generateClumpMap viable validPropertyMap newTree
+    relevantLeaves   = Seq.fromList
+                     . filter (viableNode viable validPropertyMap)
+                     . M.keys
+                     $ descendents
+    clump            = Seq.fromList
+                     $ generateClumpMap viable validPropertyMap newTree
     validPropertyMap = getValidPropertyMap newTree propertyMap
     newTree          = filterRootLeaves . rootSubtree $ tree
 
